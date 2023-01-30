@@ -3,9 +3,19 @@
 
 #include <jit/jit.h>
 
+enum Type {
+  GTYPE_PARENTHESIS = 0,
+  GTYPE_BOOL,
+  GTYPE_INT,
+  GTYPE_FLOAT,
+  GTYPE_STRING,
+  GTYPE_SYMBOL,
+};
+
 jit_int is_jit_supported();
 jit_long compile_opcodes(jit_long length, jit_long *code);
 void free_function(jit_long func);
-jit_long call_jit_function(jit_long function, jit_long args, jit_long buf, jit_long len);
+jit_long call_jit_function(jit_long function, jit_long args, jit_long buf,
+                           jit_long len);
 
 #endif /* !GRUEL_JIT_H */

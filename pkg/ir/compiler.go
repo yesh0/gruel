@@ -91,7 +91,7 @@ func (b *IrBuilder) Append(ast *gruelparser.GruelAstNode) error {
 }
 
 // Compiles the AST into byte codes
-func Compile(ast *gruelparser.GruelAstNode) ([]byte, error) {
+func Compile(ast *gruelparser.GruelAstNode, _ map[string]gruelparser.TokenType) (*IrBuilder, error) {
 	var b IrBuilder
 	if err := b.Append(ast); err != nil {
 		return nil, err

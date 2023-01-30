@@ -1,6 +1,7 @@
 package grueljit_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/Knetic/govaluate"
@@ -15,14 +16,22 @@ func TestCaller(t *testing.T) {
 	assert.Equal(t, uint64(0), caller.CallJit(0, 0, 0, 0))
 }
 
-func assertResult(t *testing.T, expr string, result uint64) {
+func assertResult(t *testing.T, expr string, result any) {
 	ast, err := gruelparser.Parse(expr)
 	assert.Nil(t, err)
-	code, err := ir.Compile(&ast)
+	code, err := ir.Compile(&ast, make(map[string]gruelparser.TokenType))
 	assert.Nil(t, err)
 	f := grueljit.CompileOpcodes(code)
 	assert.NotEqual(t, 0, f)
-	assert.Equal(t, result, caller.CallJit(f, 0, 0, 0))
+	switch v := result.(type) {
+	case int:
+		assert.Equal(t, uint64(v), caller.CallJit(f, 0, 0, 0))
+	case float64:
+		assert.Greater(t, 0.00001, math.Abs(v-math.Float64frombits(caller.CallJit(f, 0, 0, 0))))
+	default:
+		t.Fail()
+	}
+
 	grueljit.Free(f)
 }
 
@@ -36,6 +45,14 @@ func TestJit(t *testing.T) {
 	assertResult(t, "(/ 1230 10)", 123)
 	assertResult(t, "(% 123 100)", 23)
 
+	// Bool
+	assertResult(t, "(+ true true)", 2)
+	assertResult(t, "(+ true false)", 1)
+
+	// Floating point
+	assertResult(t, "(+ 1.23 0.00456)", 1.23456)
+	assertResult(t, "(/ 10 0.5)", 20.0)
+
 	// Integer zero-division
 	assertResult(t, "(/ 123000 0)", 0)
 	assertResult(t, "(% 123000 0)", 0)
@@ -45,7 +62,7 @@ func TestJit(t *testing.T) {
 
 func BenchmarkEvaluationSingle(b *testing.B) {
 	ast, _ := gruelparser.Parse("1")
-	code, _ := ir.Compile(&ast)
+	code, _ := ir.Compile(&ast, make(map[string]gruelparser.TokenType))
 	f := grueljit.CompileOpcodes(code)
 
 	b.ResetTimer()

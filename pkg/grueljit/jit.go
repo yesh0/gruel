@@ -11,10 +11,13 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
+
+	"github.com/yesh0/gruel/pkg/ir"
 )
 
 // Compiles the byte code and returns a function handle.
-func CompileOpcodes(code []byte) uint64 {
+func CompileOpcodes(ir *ir.IrBuilder) uint64 {
+	code := ir.Code()
 	handle := uint64(C.compile_opcodes((C.long)(len(code)/8), (*C.long)(unsafe.Pointer(&code[0]))))
 	runtime.KeepAlive(code)
 	return handle

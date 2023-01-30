@@ -50,10 +50,9 @@ jit_long compile_opcodes(jit_long length, jit_long *code) {
 
   int sp = 0;
   for (int pc = 0; pc < length; pc += 2) {
-    jit_long type = code[pc];
+    int type = code[pc] & 0xff;
     jit_long value = code[pc + 1];
-    switch (type) {
-    case 0:
+    if (type == GTYPE_PARENTHESIS) {
       switch (value) {
         BINARY_OP(1, jit_insn_add);
         BINARY_OP(2, jit_insn_sub);
@@ -61,20 +60,52 @@ jit_long compile_opcodes(jit_long length, jit_long *code) {
         BINARY_OP(4, jit_insn_div);
         BINARY_OP(5, jit_insn_rem);
       }
-      break;
-    default:;
+    } else if (type == GTYPE_SYMBOL) {
+      jit_context_destroy(context);
+      return 0;
+    } else {
       jit_constant_t c;
-      c.type = jit_type_long;
+      switch (type) {
+      case GTYPE_BOOL:
+        c.type = jit_type_sys_bool;
+        break;
+      case GTYPE_FLOAT:
+        c.type = jit_type_float64;
+        break;
+      case GTYPE_INT:
+        c.type = jit_type_long;
+        break;
+      }
       c.un.long_value = value;
       code[sp] = (jit_long)jit_value_create_constant(function, &c);
       sp++;
-      break;
     }
   }
+
   if (sp < 1) {
+    jit_function_abandon(function);
+    jit_context_destroy(context);
     return 0;
   }
-  jit_insn_return(function, (jit_value_t)code[sp - 1]);
+
+  jit_value_t ret = (jit_value_t)code[sp - 1];
+
+  // Stores float64 in long.
+  if (jit_value_get_type(ret) == jit_type_float64) {
+    if (jit_value_is_constant(ret)) {
+      jit_float64 c = jit_value_get_float64_constant(ret);
+      jit_constant_t cValue;
+      cValue.type = jit_type_long;
+      cValue.un.float64_value = c;
+      ret = jit_value_create_constant(function, &cValue);
+    } else {
+      jit_value_t address = jit_insn_address_of(function, ret);
+      ret = jit_insn_load_relative(function, address, 0, jit_type_long);
+    }
+  }
+
+  jit_insn_return(function, ret);
+
   if (!jit_function_compile(function)) {
     jit_function_abandon(function);
     jit_context_destroy(context);
@@ -85,7 +116,7 @@ jit_long compile_opcodes(jit_long length, jit_long *code) {
 }
 
 void free_function(jit_long func) {
-  jit_function_t f = (jit_function_t) func;
+  jit_function_t f = (jit_function_t)func;
   jit_context_t context = jit_function_get_context(f);
   jit_context_destroy(context);
 }
