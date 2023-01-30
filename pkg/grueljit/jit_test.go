@@ -2,6 +2,7 @@ package grueljit_test
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 
 	"github.com/Knetic/govaluate"
@@ -9,7 +10,6 @@ import (
 	"github.com/yesh0/gruel/internal/caller"
 	"github.com/yesh0/gruel/pkg/grueljit"
 	"github.com/yesh0/gruel/pkg/gruelparser"
-	"github.com/yesh0/gruel/pkg/ir"
 )
 
 func TestCaller(t *testing.T) {
@@ -17,22 +17,23 @@ func TestCaller(t *testing.T) {
 }
 
 func assertResult(t *testing.T, expr string, result any) {
-	ast, err := gruelparser.Parse(expr)
+	f, err := grueljit.Compile(expr, nil)
 	assert.Nil(t, err)
-	code, err := ir.Compile(&ast, make(map[string]gruelparser.TokenType))
-	assert.Nil(t, err)
-	f := grueljit.CompileOpcodes(code)
 	assert.NotEqual(t, 0, f)
 	switch v := result.(type) {
 	case int:
-		assert.Equal(t, uint64(v), caller.CallJit(f, 0, 0, 0))
+		actual, err := f.Call(nil)
+		assert.Nil(t, err)
+		assert.Equal(t, uint64(v), actual)
 	case float64:
-		assert.Greater(t, 0.00001, math.Abs(v-math.Float64frombits(caller.CallJit(f, 0, 0, 0))))
+		actual, err := f.Call(nil)
+		assert.Nil(t, err)
+		assert.Greater(t, 0.00001, math.Abs(v-math.Float64frombits(actual)))
 	default:
 		t.Fail()
 	}
 
-	grueljit.Free(f)
+	f.Free()
 }
 
 func TestJit(t *testing.T) {
@@ -60,14 +61,32 @@ func TestJit(t *testing.T) {
 	assertResult(t, "(+ (- (* (/ 4 (% 6 5)) 3) 2) 1)", (4/(6%5))*3-2+1)
 }
 
+func TestArgs(t *testing.T) {
+	f, err := grueljit.Compile("(+ (* 2 x) (% y 9))", map[string]gruelparser.TokenType{
+		"x": grueljit.TypeFloat,
+		"y": grueljit.TypeInt,
+	})
+	assert.Nil(t, err)
+	assert.True(t, f.Float())
+	v, err := f.Call(map[string]uint64{"x": math.Float64bits(9.), "y": 4})
+	assert.Nil(t, err)
+	assert.Greater(t, 0.00001, math.Abs(22-math.Float64frombits(v)))
+
+	for i := 0; i < 10000; i++ {
+		x := math.Remainder(rand.Float64(), 10)
+		y := int64(rand.Uint64())
+		v, err := f.Call(map[string]uint64{"x": math.Float64bits(x), "y": uint64(y)})
+		assert.Nil(t, err)
+		assert.Greater(t, 0.0001, math.Abs((2*x+float64(y%9))-math.Float64frombits(v)))
+	}
+}
+
 func BenchmarkEvaluationSingle(b *testing.B) {
-	ast, _ := gruelparser.Parse("1")
-	code, _ := ir.Compile(&ast, make(map[string]gruelparser.TokenType))
-	f := grueljit.CompileOpcodes(code)
+	f, _ := grueljit.Compile("1", nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		caller.CallJit(f, 0, 0, 0)
+		f.Call(nil)
 	}
 }
 

@@ -9,23 +9,105 @@ package grueljit
 */
 import "C"
 import (
+	"fmt"
 	"runtime"
 	"unsafe"
 
+	"github.com/yesh0/gruel/internal/caller"
+	"github.com/yesh0/gruel/pkg/gruelparser"
 	"github.com/yesh0/gruel/pkg/ir"
 )
 
+const (
+	TypeBool  = gruelparser.TypeBool
+	TypeInt   = gruelparser.TypeInt
+	TypeFloat = gruelparser.TypeFloat
+)
+
+type Function struct {
+	function uint64
+	arg_map  map[string]int
+	float    bool
+}
+
+func Compile(code string, symbols map[string]gruelparser.TokenType) (*Function, error) {
+	ast, err := gruelparser.Parse(code)
+	if err != nil {
+		return nil, err
+	}
+	builder, err := ir.Compile(&ast, symbols)
+	if err != nil {
+		return nil, err
+	}
+	return compileOpcodes(builder)
+}
+
 // Compiles the byte code and returns a function handle.
-func CompileOpcodes(ir *ir.IrBuilder) uint64 {
+func compileOpcodes(ir *ir.IrBuilder) (*Function, error) {
 	code := ir.Code()
-	handle := uint64(C.compile_opcodes((C.long)(len(code)/8), (*C.long)(unsafe.Pointer(&code[0]))))
+	args := ir.Args()
+	var args_ptr *C.char
+	if len(args) != 0 {
+		args_ptr = (*C.char)(unsafe.Pointer(&args[0]))
+	}
+
+	handle := uint64(C.compile_opcodes(
+		(C.long)(len(code)/8),
+		(*C.long)(unsafe.Pointer(&code[0])),
+		(C.long)(len(args)),
+		args_ptr,
+	))
+
+	if handle == 0 {
+		return nil, fmt.Errorf("unexpected error when passing to libjit")
+	}
+
+	runtime.KeepAlive(args)
 	runtime.KeepAlive(code)
-	return handle
+	var float bool
+	if code[0] == 0xff {
+		float = true
+	}
+
+	return &Function{function: handle, arg_map: ir.ArgMap(), float: float}, nil
 }
 
 // Frees the resources.
-func Free(function uint64) {
-	C.free_function((C.long)(function))
+func (f *Function) Free() {
+	C.free_function((C.long)(f.function))
+	f.function = 0
+}
+
+// Calls the function
+func (f *Function) Call(args map[string]uint64) (uint64, error) {
+	argc := len(f.arg_map)
+	if argc == 0 {
+		return caller.CallJit(f.function, 0, 0, 0), nil
+	}
+
+	if args == nil {
+		return 0, fmt.Errorf("requires parameters")
+	}
+
+	params := make([]uint64, argc*2)
+	for name, index := range f.arg_map {
+		value, ok := args[name]
+		if !ok {
+			return 0, fmt.Errorf("parameter %s not found", name)
+		}
+		params[index] = value
+	}
+	address := uint64(uintptr(unsafe.Pointer(&params[0])))
+	return caller.CallJit(
+		f.function,
+		address,
+		address+uint64(argc)*8,
+		uint64(argc),
+	), nil
+}
+
+func (f *Function) Float() bool {
+	return f.float
 }
 
 // Returns false if the code is interpreted
