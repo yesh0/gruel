@@ -37,9 +37,12 @@ func TestSplit(t *testing.T) {
 	// floats
 	assertTokens(t, "0.123", gruelparser.TypeFloat, "0.123")
 	assertTokens(t, ".456f", gruelparser.TypeFloat, ".456f")
+	assertTokens(t, "-.1456f", gruelparser.TypeFloat, "-.1456f")
 	// ints
 	assertTokens(t, "0x123ABC", gruelparser.TypeInt, "0x123ABC")
 	assertTokens(t, "0o556677", gruelparser.TypeInt, "0o556677")
+	assertTokens(t, "-0556677", gruelparser.TypeInt, "-0556677")
+	assertTokens(t, "-0556677", gruelparser.TypeInt, "-0556677")
 
 	// bools
 	assertTokens(t, "true", gruelparser.TypeBool, "true")

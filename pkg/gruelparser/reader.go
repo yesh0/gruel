@@ -107,6 +107,9 @@ func (reader *TokenReader) NextToken() (string, TokenType, error) {
 
 	bytes := reader.s.Bytes()
 	initial := bytes[0]
+	if (initial == '-' || initial == '+') && len(bytes) > 1 {
+		initial = bytes[1]
+	}
 	token := string(bytes)
 	switch {
 	case initial == '"':
