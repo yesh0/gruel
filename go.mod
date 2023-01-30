@@ -3,6 +3,7 @@ module github.com/yesh0/gruel
 go 1.19
 
 require (
+	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/mmcloughlin/avo v0.5.0
 	github.com/stretchr/testify v1.8.1
 )
