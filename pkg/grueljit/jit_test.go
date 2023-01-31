@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yesh0/gruel/internal/caller"
 	"github.com/yesh0/gruel/pkg/grueljit"
-	"github.com/yesh0/gruel/pkg/gruelparser"
 )
 
 func TestCaller(t *testing.T) {
@@ -62,7 +61,7 @@ func TestJit(t *testing.T) {
 }
 
 func TestArgs(t *testing.T) {
-	f, err := grueljit.Compile("(+ (* 2 x) (% y 9))", map[string]gruelparser.TokenType{
+	f, err := grueljit.Compile("(+ (* 2 x) (% y 9))", map[string]byte{
 		"x": grueljit.TypeFloat,
 		"y": grueljit.TypeInt,
 	})

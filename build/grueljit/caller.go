@@ -7,11 +7,12 @@ import (
 )
 
 func main() {
-	TEXT("CallJit", NOSPLIT, "func(f uint64, args uint64, buf uint64, l uint64) uint64")
+	frameSize := 512
+	TEXT("CallJit", NOSPLIT|NOFRAME, "func(f uint64, args uint64, buf uint64, l uint64) uint64")
 	Doc(
 		"Calls a jit_function_t without locking an OS thread.",
 		"- f: a jit_function value",
-		"- args: a pointer to an []uint64 argument array",
+		"- args: a pointer to an []uint64 argument array, probably from unsafe.Pointer(&args[0])",
 		"- buf: temporary buffer to save the C code from malloc, must be larger than args",
 		"- l: the length of the args",
 	)
@@ -25,9 +26,9 @@ func main() {
 	// Arg 4
 	Load(Param("l"), reg.RCX)
 	// Stack preparation
-	AllocLocal(512)
+	AllocLocal(frameSize)
 	MOVQ(reg.RSP, reg.RBX)
-	ADDQ(operand.I32(512), reg.RSP)
+	ADDQ(operand.I32(frameSize), reg.RSP)
 	MOVQ(operand.I64(-1<<4), reg.RAX)
 	ANDQ(reg.RAX, reg.RSP)
 	// Call relative

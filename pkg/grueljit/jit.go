@@ -14,14 +14,14 @@ import (
 	"unsafe"
 
 	"github.com/yesh0/gruel/internal/caller"
-	"github.com/yesh0/gruel/pkg/gruelparser"
-	"github.com/yesh0/gruel/pkg/ir"
+	"github.com/yesh0/gruel/internal/gruelparser"
+	"github.com/yesh0/gruel/internal/ir"
 )
 
 const (
-	TypeBool  = gruelparser.TypeBool
-	TypeInt   = gruelparser.TypeInt
-	TypeFloat = gruelparser.TypeFloat
+	TypeBool  byte = byte(gruelparser.TypeBool)
+	TypeInt   byte = byte(gruelparser.TypeInt)
+	TypeFloat byte = byte(gruelparser.TypeFloat)
 )
 
 type Function struct {
@@ -30,7 +30,7 @@ type Function struct {
 	float    bool
 }
 
-func Compile(code string, symbols map[string]gruelparser.TokenType) (*Function, error) {
+func Compile(code string, symbols map[string]byte) (*Function, error) {
 	ast, err := gruelparser.Parse(code)
 	if err != nil {
 		return nil, err

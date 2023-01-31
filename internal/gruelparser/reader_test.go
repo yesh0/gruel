@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yesh0/gruel/pkg/gruelparser"
+	"github.com/yesh0/gruel/internal/gruelparser"
 )
 
 func assertToken(t assert.TestingT, expected string, expectedType gruelparser.TokenType, expr string, n int) {

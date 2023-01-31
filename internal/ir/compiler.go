@@ -9,7 +9,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/yesh0/gruel/pkg/gruelparser"
+	"github.com/yesh0/gruel/internal/gruelparser"
 )
 
 // Builds byte code
@@ -19,7 +19,7 @@ type IrBuilder struct {
 	argc    int
 	argv    map[string]int
 	args    []byte
-	symbols map[string]gruelparser.TokenType
+	symbols map[string]byte
 }
 
 type Operator struct {
@@ -30,11 +30,12 @@ type Operator struct {
 
 // Maps operators to opcodes
 var Operators = map[string]Operator{
-	"+": {0x0001, 2, gruelparser.TypeInt},
-	"-": {0x0002, 2, gruelparser.TypeInt},
-	"*": {0x0003, 2, gruelparser.TypeInt},
-	"/": {0x0004, 2, gruelparser.TypeInt},
-	"%": {0x0005, 2, gruelparser.TypeInt},
+	"+":  {0x0001, 2, gruelparser.TypeInt},
+	"-":  {0x0002, 2, gruelparser.TypeInt},
+	"*":  {0x0003, 2, gruelparser.TypeInt},
+	"/":  {0x0004, 2, gruelparser.TypeInt},
+	"%":  {0x0005, 2, gruelparser.TypeInt},
+	">=": {0x0006, 2, gruelparser.TypeInt},
 }
 
 func (b *IrBuilder) Push(value string, t gruelparser.TokenType) error {
@@ -145,8 +146,9 @@ type CompiledChunk struct {
 }
 
 // Compiles the AST into byte codes
-func Compile(ast *gruelparser.GruelAstNode, symbols map[string]gruelparser.TokenType) (*IrBuilder, error) {
-	for k, v := range symbols {
+func Compile(ast *gruelparser.GruelAstNode, symbols map[string]byte) (*IrBuilder, error) {
+	for k, vb := range symbols {
+		v := gruelparser.TokenType(vb)
 		if v != gruelparser.TypeBool && v != gruelparser.TypeInt && v != gruelparser.TypeFloat {
 			return nil, fmt.Errorf("symbol %s must have a value type", k)
 		}
