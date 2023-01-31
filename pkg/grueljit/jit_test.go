@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Knetic/govaluate"
 	"github.com/stretchr/testify/assert"
 	"github.com/yesh0/gruel/internal/caller"
 	"github.com/yesh0/gruel/internal/ir"
@@ -166,23 +165,5 @@ func TestStringArgs(t *testing.T) {
 		result, err := f.Call(map[string]any{"s": sentence[a:b]})
 		assert.Nil(t, err)
 		assert.Equal(t, uint64(strings.Index(sentence, sentence[a:b])), result)
-	}
-}
-
-func BenchmarkEvaluationSingle(b *testing.B) {
-	f, _ := grueljit.Compile("1", nil)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		f.Call(nil)
-	}
-}
-
-func BenchmarkGovaluateSingle(b *testing.B) {
-	e, _ := govaluate.NewEvaluableExpression("1")
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		e.Evaluate(nil)
 	}
 }
