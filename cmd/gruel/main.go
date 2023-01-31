@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -16,7 +15,7 @@ func main() {
 	}
 	expr := os.Args[1]
 	types := make(map[string]byte, len(os.Args)-2)
-	values := make(map[string]uint64, len(os.Args)-2)
+	values := make(map[string]any, len(os.Args)-2)
 
 	log.Println("Environment:")
 	for _, arg := range os.Args[2:] {
@@ -33,7 +32,7 @@ func main() {
 			log.Fatal(err)
 		}
 		types[k] = grueljit.TypeFloat
-		values[k] = math.Float64bits(n)
+		values[k] = n
 	}
 	log.Println("Evaluating:\n    ", expr)
 
@@ -45,9 +44,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	n := float64(out)
-	if f.Float() {
-		n = math.Float64frombits(out)
-	}
-	log.Println("Result:\n    ", n)
+	log.Println("Result:\n    ", out)
 }

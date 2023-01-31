@@ -19,10 +19,12 @@ type GoString [2]uint64
 
 // Builds byte code
 type IrBuilder struct {
-	b       bytes.Buffer
-	final   bool
-	argc    int
-	argv    map[string]int
+	b     bytes.Buffer
+	final bool
+	argc  int
+	// Maps from paramter names to parameter indices
+	argv map[string]int
+	// Paramter types
 	args    []byte
 	symbols map[string]byte
 	// Keep those objects alive
@@ -161,6 +163,17 @@ func (b *IrBuilder) References() any {
 	return []any{b.objects, b.strings}
 }
 
+func (b *IrBuilder) StringArgc() int {
+	b.Finalize()
+	count := 0
+	for _, v := range b.args {
+		if v == byte(gruelparser.TypeString) {
+			count++
+		}
+	}
+	return count
+}
+
 func (b *IrBuilder) Append(ast *gruelparser.GruelAstNode) error {
 	if ast.Parameters != nil {
 		for i := len(ast.Parameters) - 1; i >= 0; i-- {
@@ -181,7 +194,8 @@ type CompiledChunk struct {
 func Compile(ast *gruelparser.GruelAstNode, symbols map[string]byte) (*IrBuilder, error) {
 	for k, vb := range symbols {
 		v := gruelparser.TokenType(vb)
-		if v != gruelparser.TypeBool && v != gruelparser.TypeInt && v != gruelparser.TypeFloat {
+		if v != gruelparser.TypeBool && v != gruelparser.TypeInt &&
+			v != gruelparser.TypeFloat && v != gruelparser.TypeString {
 			return nil, fmt.Errorf("symbol %s must have a value type", k)
 		}
 	}
