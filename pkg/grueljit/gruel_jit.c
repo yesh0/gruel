@@ -5,20 +5,14 @@ jit_int is_jit_supported() {
   return !jit_uses_interpreter();
 }
 
-jit_long call_jit_function(jit_long function, jit_long args, jit_long buf,
-                           jit_long len) {
-  if (function == 0 || ((args == 0 || buf == 0) && len != 0)) {
+jit_long call_jit_function(jit_long function, jit_long args, jit_long len) {
+  if (function == 0 || (args == 0 && len != 0)) {
     return 0;
   }
   jit_function_t f = (jit_function_t)function;
   jit_long *parameters = (jit_long *)args;
-  void **list = (void **)buf;
-  for (int i = 0; i < len; ++i) {
-    list[i] = (void *)&parameters[i];
-  }
-  jit_long ret;
-  jit_function_apply(f, list, &ret);
-  return ret;
+  void *entry = jit_function_to_closure(f);
+  return ((jit_long(*)(jit_long *))entry)(parameters);
 }
 
 #define BINARY_OP(opcode, func)                                                \
@@ -41,31 +35,16 @@ jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
   jit_context_build_start(context);
 
   jit_type_t signature;
-  jit_type_t *params = (jit_type_t *)&code[length];
-  for (int i = 0; i < argc; i++) {
-    switch (argv[i]) {
-    case GTYPE_BOOL:
-      params[i] = jit_type_sys_bool;
-      break;
-    case GTYPE_FLOAT:
-      params[i] = jit_type_float64;
-      break;
-    case GTYPE_INT:
-      params[i] = jit_type_long;
-      break;
-    default:
-      jit_context_destroy(context);
-      return 0;
-      break;
-    }
-  }
+  jit_type_t paramType = jit_type_void_ptr;
   signature =
-      jit_type_create_signature(jit_abi_cdecl, jit_type_long, params, argc, 1);
+      jit_type_create_signature(jit_abi_cdecl, jit_type_long, &paramType, 1, 1);
   jit_function_t function = jit_function_create(context, signature);
   if (!function) {
     jit_context_destroy(context);
     return 0;
   }
+
+  jit_value_t paramBase = jit_value_get_param(function, 0);
 
   int sp = 0;
   for (int pc = 0; pc < length; pc += 2) {
@@ -80,7 +59,13 @@ jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
         BINARY_OP(5, jit_insn_rem);
       }
     } else if (type == GTYPE_SYMBOL) {
-      code[sp] = (jit_long)jit_value_get_param(function, value);
+      if (argv[value] == GTYPE_FLOAT) {
+        code[sp] = (jit_long)jit_insn_load_relative(
+            function, paramBase, value * 8, jit_type_float64);
+      } else {
+        code[sp] = (jit_long)jit_insn_load_relative(function, paramBase,
+                                                    value * 8, jit_type_long);
+      }
       sp++;
     } else {
       jit_constant_t c;

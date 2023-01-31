@@ -106,8 +106,6 @@ func (b *IrBuilder) Finalize() {
 			args[index] = byte(b.symbols[name])
 		}
 		b.args = args
-
-		b.b.Grow(len(args) * 8)
 	}
 }
 

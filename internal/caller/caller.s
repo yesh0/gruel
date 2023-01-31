@@ -2,17 +2,16 @@
 
 #include "textflag.h"
 
-// func CallJit(f uint64, args uint64, buf uint64, l uint64) uint64
-TEXT ·CallJit(SB), NOSPLIT|NOFRAME, $512-40
+// func CallJit(f uint64, args uint64, l uint64) uint64
+TEXT ·CallJit(SB), NOSPLIT|NOFRAME, $512-32
 	MOVQ f+0(FP), DI
 	MOVQ args+8(FP), SI
-	MOVQ buf+16(FP), DX
-	MOVQ l+24(FP), CX
+	MOVQ l+16(FP), DX
 	MOVQ SP, BX
 	ADDQ $+512, SP
 	MOVQ $-16, AX
 	ANDQ AX, SP
 	CALL call_jit_function+0x00(SB)
 	MOVQ BX, SP
-	MOVQ AX, ret+32(FP)
+	MOVQ AX, ret+24(FP)
 	RET

@@ -82,14 +82,14 @@ func (f *Function) Free() {
 func (f *Function) Call(args map[string]uint64) (uint64, error) {
 	argc := len(f.arg_map)
 	if argc == 0 {
-		return caller.CallJit(f.function, 0, 0, 0), nil
+		return caller.CallJit(f.function, 0, 0), nil
 	}
 
 	if args == nil {
 		return 0, fmt.Errorf("requires parameters")
 	}
 
-	params := make([]uint64, argc*2)
+	params := make([]uint64, argc)
 	for name, index := range f.arg_map {
 		value, ok := args[name]
 		if !ok {
@@ -101,7 +101,6 @@ func (f *Function) Call(args map[string]uint64) (uint64, error) {
 	return caller.CallJit(
 		f.function,
 		address,
-		address+uint64(argc)*8,
 		uint64(argc),
 	), nil
 }

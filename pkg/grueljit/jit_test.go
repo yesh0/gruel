@@ -12,7 +12,7 @@ import (
 )
 
 func TestCaller(t *testing.T) {
-	assert.Equal(t, uint64(0), caller.CallJit(0, 0, 0, 0))
+	assert.Equal(t, uint64(0), caller.CallJit(0, 0, 0))
 }
 
 func assertResult(t *testing.T, expr string, result any) {
