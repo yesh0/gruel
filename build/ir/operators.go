@@ -97,6 +97,11 @@ func (p Pairs) Less(i, j int) bool {
 	return p[i].opcode < p[j].opcode
 }
 
+var type_map = map[string]string{
+	"i": "long",
+	"s": "void_ptr",
+}
+
 func writeC(b *bytes.Buffer, indent string) {
 	lines := make(Pairs, 0, 2*len(ir.Operators))
 	for name, ops := range ir.Operators {
@@ -114,6 +119,30 @@ func writeC(b *bytes.Buffer, indent string) {
 			case op.Argc == 2 && op.JitFunction[0] == '!':
 				line.WriteString(fmt.Sprintf("LOGIC_OP (0x%02x, %s);",
 					op.Opcode, op.JitFunction[1:]))
+			case op.Argc == 1 && op.JitFunction[0] == ':':
+				fields := strings.Split(op.JitFunction, ":")
+				if len(fields) != 3 {
+					log.Fatalf("invalid function %s\n", op.JitFunction)
+				}
+				typeName, ok := type_map[fields[1]]
+				if !ok {
+					log.Fatalf("invalid type %s\n", op.JitFunction)
+				}
+				line.WriteString(fmt.Sprintf("UNSTRING_OP(0x%02x, %s, %s);",
+					op.Opcode, fields[2], typeName))
+			case op.Argc == 2 && op.JitFunction[0] == ':':
+				fields := strings.Split(op.JitFunction, ":")
+				if len(fields) != 4 {
+					log.Fatalf("invalid function %s\n", op.JitFunction)
+				}
+				for _, v := range fields[1:3] {
+					_, ok := type_map[v]
+					if !ok {
+						log.Fatalf("invalid type %s in %s\n", v, op.JitFunction)
+					}
+				}
+				line.WriteString(fmt.Sprintf("BISTRING_OP(0x%02x, %s, %s, %s);",
+					op.Opcode, fields[3], type_map[fields[1]], type_map[fields[2]]))
 			default:
 				log.Fatalf("unrecognized operator %s:%d", name, op.Opcode)
 			}

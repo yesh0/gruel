@@ -12,6 +12,11 @@ enum Type {
   GTYPE_SYMBOL,
 };
 
+typedef struct {
+  jit_long ptr;
+  jit_long len;
+} go_string;
+
 jit_int is_jit_supported();
 jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
                          char *argv);

@@ -108,15 +108,28 @@ func TestMoreArgs(t *testing.T) {
 	}
 }
 
+var string_only = []string{
+	"len", "index",
+}
+
 func TestOps(t *testing.T) {
 	for name, ops := range ir.Operators {
+		no_arithmetic := false
+		for _, v := range string_only {
+			if v == name {
+				no_arithmetic = true
+			}
+		}
+		if no_arithmetic {
+			continue
+		}
 		for _, op := range ops {
 			expr := "(" + name + " x y x y)"
 			if op.Argc == 1 {
 				expr = "(" + name + " x)"
 			}
 			f, err := grueljit.Compile(expr, map[string]byte{"x": grueljit.TypeFloat, "y": grueljit.TypeInt})
-			assert.Nil(t, err)
+			assert.Nil(t, err, "compilation error: %s", expr)
 			_, err = f.Call(map[string]uint64{"x": math.Float64bits(1.), "y": 1})
 			assert.Nil(t, err)
 			f.Free()
@@ -128,6 +141,14 @@ func TestOps(t *testing.T) {
 			f.Free()
 		}
 	}
+}
+
+func TestString(t *testing.T) {
+	assertResult(t, "(len \"Hello\")", 5)
+	assertResult(t, "(== \"Hello\" \"Hello\")", 1)
+	assertResult(t, "(== \"Hello\" \"hello\")", 0)
+	assertResult(t, "(== \"1\" 1)", 0)
+	assertResult(t, "(index \"The quick brown fox jumps over the lazy dog\" \"quick\")", 4)
 }
 
 func BenchmarkEvaluationSingle(b *testing.B) {

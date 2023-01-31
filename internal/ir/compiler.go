@@ -4,13 +4,18 @@ package ir
 
 import (
 	"bytes"
+	"container/list"
 	"encoding/binary"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
+	"unsafe"
 
 	"github.com/yesh0/gruel/internal/gruelparser"
 )
+
+type GoString [2]uint64
 
 // Builds byte code
 type IrBuilder struct {
@@ -20,6 +25,9 @@ type IrBuilder struct {
 	argv    map[string]int
 	args    []byte
 	symbols map[string]byte
+	// Keep those objects alive
+	objects []string
+	strings list.List
 }
 
 func (b *IrBuilder) Push(value string, t gruelparser.TokenType, argc int) error {
@@ -52,7 +60,15 @@ func (b *IrBuilder) Push(value string, t gruelparser.TokenType, argc int) error 
 			output = uint64(v)
 		}
 	case gruelparser.TypeString:
-		return fmt.Errorf("string unsupported")
+		length := len(value)
+		if length >= math.MaxInt32-2 {
+			return fmt.Errorf("string too large")
+		}
+		b.objects = append(b.objects, value)
+		hdr := (*reflect.StringHeader)(unsafe.Pointer(&value))
+		s := &GoString{uint64(hdr.Data), uint64(length)}
+		b.strings.PushBack(s)
+		output = uint64(uintptr(unsafe.Pointer(&s[0])))
 	case gruelparser.TypeSymbol:
 		var ok bool
 		_, ok = b.symbols[value]
@@ -134,6 +150,17 @@ func (b *IrBuilder) ArgMap() map[string]int {
 	return b.argv
 }
 
+// Objects used by the program.
+//
+// It's fortunate that Go's GC does not move objects.
+func (b *IrBuilder) References() any {
+	b.Finalize()
+	if len(b.objects) == 0 && b.strings.Len() == 0 {
+		return nil
+	}
+	return []any{b.objects, b.strings}
+}
+
 func (b *IrBuilder) Append(ast *gruelparser.GruelAstNode) error {
 	if ast.Parameters != nil {
 		for i := len(ast.Parameters) - 1; i >= 0; i-- {
@@ -159,7 +186,10 @@ func Compile(ast *gruelparser.GruelAstNode, symbols map[string]byte) (*IrBuilder
 		}
 	}
 
-	b := IrBuilder{symbols: symbols, argv: make(map[string]int, len(symbols))}
+	b := IrBuilder{
+		symbols: symbols,
+		argv:    make(map[string]int, len(symbols)),
+	}
 	if err := b.Append(ast); err != nil {
 		return nil, err
 	}

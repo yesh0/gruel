@@ -27,9 +27,10 @@ const (
 )
 
 type Function struct {
-	function uint64
-	arg_map  map[string]int
-	float    bool
+	function   uint64
+	arg_map    map[string]int
+	float      bool
+	references any
 }
 
 func Compile(code string, symbols map[string]byte) (*Function, error) {
@@ -79,7 +80,10 @@ func compileOpcodes(ir *ir.IrBuilder) (*Function, error) {
 		float = true
 	}
 
-	return &Function{function: handle, arg_map: ir.ArgMap(), float: float}, nil
+	return &Function{
+		function: handle, arg_map: ir.ArgMap(),
+		float: float, references: ir.References(),
+	}, nil
 }
 
 // Frees the resources.
@@ -108,11 +112,13 @@ func (f *Function) Call(args map[string]uint64) (uint64, error) {
 		params[index] = value
 	}
 	address := uint64(uintptr(unsafe.Pointer(&params[0])))
-	return caller.CallJit(
+	ret := caller.CallJit(
 		f.function,
 		address,
 		uint64(argc),
-	), nil
+	)
+	runtime.KeepAlive(params)
+	return ret, nil
 }
 
 func (f *Function) Float() bool {

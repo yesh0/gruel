@@ -11,7 +11,7 @@ def index_of(word, lines):
     return -1
 
 
-excludes = ["to_not_bool"]
+excludes = []
 mapping = {
     "eq": "==",
     "ne": "!=",
@@ -19,10 +19,15 @@ mapping = {
     "le": "<=",
     "gt": ">",
     "ge": ">=",
+    "to_not_bool": "!",
 }
 aliases = {
     "==": ["=", "=="],
     "pow": ["pow", "**"],
+}
+wrapped = {
+    "jit_insn_eq": "gruel_insn_eq",
+    "jit_insn_ne": "gruel_insn_ne",
 }
 
 
@@ -53,6 +58,8 @@ def main():
             argc = 1
             if "value2" in lines[i] or "value2" in lines[i + 1]:
                 argc = 2
+            if full_name in wrapped:
+                full_name = wrapped[full_name]
             for alias in (aliases[name] if name in aliases else [name]):
                 functions.append(
                     f"\"{alias}\": " +
