@@ -35,6 +35,18 @@ jit_long call_jit_function(jit_long function, jit_long args, jit_long len) {
     code[sp - 1] = (jit_long)func(function, (jit_value_t)code[sp - 1]);        \
     break
 
+#define LOGIC_OP(opcode, func)                                                 \
+  case (opcode):                                                               \
+    if (sp < 2) {                                                              \
+      jit_context_destroy(context);                                            \
+      return 0;                                                                \
+    }                                                                          \
+    sp--;                                                                      \
+    code[sp - 1] = (jit_long)func(                                             \
+        function, jit_insn_to_bool(function, (jit_value_t)code[sp]),           \
+        jit_insn_to_bool(function, (jit_value_t)code[sp - 1]));                \
+    break
+
 jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
                          char *argv) {
   jit_context_t context = jit_context_create();
@@ -88,38 +100,86 @@ jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
         BINARY_OP(0x0c, jit_insn_shr);
         // `>>>`(2)
         BINARY_OP(0x0d, jit_insn_ushr);
-        // `**`(2)
-        BINARY_OP(0x10, jit_insn_pow);
+        // `&&`(2)
+        LOGIC_OP (0x20, jit_insn_and);
+        // `||`(2)
+        LOGIC_OP (0x21, jit_insn_or);
+        // `=`(2)
+        BINARY_OP(0x40, jit_insn_eq);
+        // `==`(2)
+        BINARY_OP(0x41, jit_insn_eq);
+        // `!=`(2)
+        BINARY_OP(0x42, jit_insn_ne);
+        // `<`(2)
+        BINARY_OP(0x43, jit_insn_lt);
+        // `<=`(2)
+        BINARY_OP(0x44, jit_insn_le);
+        // `>`(2)
+        BINARY_OP(0x45, jit_insn_gt);
+        // `>=`(2)
+        BINARY_OP(0x46, jit_insn_ge);
+        // `cmpl`(2)
+        BINARY_OP(0x47, jit_insn_cmpl);
+        // `cmpg`(2)
+        BINARY_OP(0x48, jit_insn_cmpg);
+        // `->bool`(1)
+        UNARY_OP (0x49, jit_insn_to_bool);
         // `acos`(1)
-        UNARY_OP (0x11, jit_insn_acos);
+        UNARY_OP (0x4a, jit_insn_acos);
         // `asin`(1)
-        UNARY_OP (0x12, jit_insn_asin);
+        UNARY_OP (0x4b, jit_insn_asin);
         // `atan`(1)
-        UNARY_OP (0x13, jit_insn_atan);
+        UNARY_OP (0x4c, jit_insn_atan);
         // `atan2`(2)
-        BINARY_OP(0x14, jit_insn_atan2);
+        BINARY_OP(0x4d, jit_insn_atan2);
+        // `ceil`(1)
+        UNARY_OP (0x4e, jit_insn_ceil);
         // `cos`(1)
-        UNARY_OP (0x15, jit_insn_cos);
+        UNARY_OP (0x4f, jit_insn_cos);
         // `cosh`(1)
-        UNARY_OP (0x16, jit_insn_cosh);
+        UNARY_OP (0x50, jit_insn_cosh);
         // `exp`(1)
-        UNARY_OP (0x17, jit_insn_exp);
+        UNARY_OP (0x51, jit_insn_exp);
+        // `floor`(1)
+        UNARY_OP (0x52, jit_insn_floor);
         // `log`(1)
-        UNARY_OP (0x18, jit_insn_log);
+        UNARY_OP (0x53, jit_insn_log);
         // `log10`(1)
-        UNARY_OP (0x19, jit_insn_log10);
+        UNARY_OP (0x54, jit_insn_log10);
         // `pow`(2)
-        BINARY_OP(0x1a, jit_insn_pow);
+        BINARY_OP(0x55, jit_insn_pow);
+        // `**`(2)
+        BINARY_OP(0x56, jit_insn_pow);
+        // `rint`(1)
+        UNARY_OP (0x57, jit_insn_rint);
+        // `round`(1)
+        UNARY_OP (0x58, jit_insn_round);
         // `sin`(1)
-        UNARY_OP (0x1b, jit_insn_sin);
+        UNARY_OP (0x59, jit_insn_sin);
         // `sinh`(1)
-        UNARY_OP (0x1c, jit_insn_sinh);
+        UNARY_OP (0x5a, jit_insn_sinh);
         // `sqrt`(1)
-        UNARY_OP (0x1d, jit_insn_sqrt);
+        UNARY_OP (0x5b, jit_insn_sqrt);
         // `tan`(1)
-        UNARY_OP (0x1e, jit_insn_tan);
+        UNARY_OP (0x5c, jit_insn_tan);
         // `tanh`(1)
-        UNARY_OP (0x1f, jit_insn_tanh);
+        UNARY_OP (0x5d, jit_insn_tanh);
+        // `trunc`(1)
+        UNARY_OP (0x5e, jit_insn_trunc);
+        // `nan?`(1)
+        UNARY_OP (0x5f, jit_insn_is_nan);
+        // `finite?`(1)
+        UNARY_OP (0x60, jit_insn_is_finite);
+        // `inf?`(1)
+        UNARY_OP (0x61, jit_insn_is_inf);
+        // `abs`(1)
+        UNARY_OP (0x62, jit_insn_abs);
+        // `min`(2)
+        BINARY_OP(0x63, jit_insn_min);
+        // `max`(2)
+        BINARY_OP(0x64, jit_insn_max);
+        // `sign`(1)
+        UNARY_OP (0x65, jit_insn_sign);
         //@end maintained by operators.go
       default:
         jit_context_destroy(context);

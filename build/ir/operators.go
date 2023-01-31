@@ -105,12 +105,15 @@ func writeC(b *bytes.Buffer, indent string) {
 			line.WriteString(fmt.Sprintf("%s// `%s`(%d)\n", indent, name, op.Argc))
 			line.WriteString(indent)
 			switch {
-			case op.Argc == 1 && op.JitFunction[0] != ':':
+			case op.Argc == 1 && !unicode.IsPunct(rune(op.JitFunction[0])):
 				line.WriteString(fmt.Sprintf("UNARY_OP (0x%02x, %s);",
 					op.Opcode, op.JitFunction))
-			case op.Argc == 2 && op.JitFunction[0] != ':':
+			case op.Argc == 2 && !unicode.IsPunct(rune(op.JitFunction[0])):
 				line.WriteString(fmt.Sprintf("BINARY_OP(0x%02x, %s);",
 					op.Opcode, op.JitFunction))
+			case op.Argc == 2 && op.JitFunction[0] == '!':
+				line.WriteString(fmt.Sprintf("LOGIC_OP (0x%02x, %s);",
+					op.Opcode, op.JitFunction[1:]))
 			default:
 				log.Fatalf("unrecognized operator %s:%d", name, op.Opcode)
 			}
