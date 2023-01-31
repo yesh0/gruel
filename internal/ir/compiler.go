@@ -22,23 +22,7 @@ type IrBuilder struct {
 	symbols map[string]byte
 }
 
-type Operator struct {
-	Opcode uint64
-	Argc   int
-	Argt   gruelparser.TokenType
-}
-
-// Maps operators to opcodes
-var Operators = map[string]Operator{
-	"+":  {0x0001, 2, gruelparser.TypeInt},
-	"-":  {0x0002, 2, gruelparser.TypeInt},
-	"*":  {0x0003, 2, gruelparser.TypeInt},
-	"/":  {0x0004, 2, gruelparser.TypeInt},
-	"%":  {0x0005, 2, gruelparser.TypeInt},
-	">=": {0x0006, 2, gruelparser.TypeInt},
-}
-
-func (b *IrBuilder) Push(value string, t gruelparser.TokenType) error {
+func (b *IrBuilder) Push(value string, t gruelparser.TokenType, argc int) error {
 	if b.final {
 		return fmt.Errorf("code already finalized")
 	}
@@ -85,16 +69,39 @@ func (b *IrBuilder) Push(value string, t gruelparser.TokenType) error {
 			return fmt.Errorf("symbol %s not found", value)
 		}
 	case gruelparser.TypeParenthesis:
-		opcode, ok := Operators[value]
-		if ok {
-			output = opcode.Opcode
-		} else {
+		if op := findOperator(value, argc); op == nil {
 			return fmt.Errorf("operator %s not found", value)
+		} else {
+			output = uint64(op.Opcode)
+			// Handling `(+ 1 2 3 4 5 ...)`
+			for argc > op.Argc {
+				binary.Write(&b.b, binary.LittleEndian, &tType)
+				binary.Write(&b.b, binary.LittleEndian, &output)
+				argc--
+			}
 		}
 	}
 	binary.Write(&b.b, binary.LittleEndian, &tType)
 	binary.Write(&b.b, binary.LittleEndian, &output)
 	return nil
+}
+
+func findOperator(name string, argc int) *Operator {
+	ops, ok := Operators[name]
+	if ok {
+		var bi_op *Operator
+		for _, op := range ops {
+			if op.Argc == argc {
+				return &op
+			}
+			if op.Argc == 2 {
+				bi_op = &op
+			}
+		}
+		return bi_op
+	} else {
+		return nil
+	}
 }
 
 func (b *IrBuilder) Finalize() {
@@ -129,13 +136,13 @@ func (b *IrBuilder) ArgMap() map[string]int {
 
 func (b *IrBuilder) Append(ast *gruelparser.GruelAstNode) error {
 	if ast.Parameters != nil {
-		for _, node := range ast.Parameters {
-			if err := b.Append(&node); err != nil {
+		for i := len(ast.Parameters) - 1; i >= 0; i-- {
+			if err := b.Append(&ast.Parameters[i]); err != nil {
 				return err
 			}
 		}
 	}
-	return b.Push(ast.Value, ast.Type)
+	return b.Push(ast.Value, ast.Type, len(ast.Parameters))
 }
 
 type CompiledChunk struct {

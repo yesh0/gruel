@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/yesh0/gruel/pkg/grueljit"
-	"github.com/yesh0/gruel/pkg/gruelparser"
 )
 
 func main() {
@@ -16,7 +15,7 @@ func main() {
 		log.Fatalf("Usage: %s <expr> [var1=value1] [var2=value2] [...]\n", os.Args[0])
 	}
 	expr := os.Args[1]
-	types := make(map[string]gruelparser.TokenType, len(os.Args)-2)
+	types := make(map[string]byte, len(os.Args)-2)
 	values := make(map[string]uint64, len(os.Args)-2)
 
 	log.Println("Environment:")

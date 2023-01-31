@@ -1,6 +1,7 @@
 package grueljit_test
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/stretchr/testify/assert"
 	"github.com/yesh0/gruel/internal/caller"
+	"github.com/yesh0/gruel/internal/ir"
 	"github.com/yesh0/gruel/pkg/grueljit"
 )
 
@@ -45,6 +47,8 @@ func TestJit(t *testing.T) {
 	assertResult(t, "(/ 1230 10)", 123)
 	assertResult(t, "(% 123 100)", 23)
 
+	assertResult(t, "(/ 31536000. 365 24 60 60)", 1.)
+
 	// Bool
 	assertResult(t, "(+ true true)", 2)
 	assertResult(t, "(+ true false)", 1)
@@ -77,6 +81,52 @@ func TestArgs(t *testing.T) {
 		v, err := f.Call(map[string]uint64{"x": math.Float64bits(x), "y": uint64(y)})
 		assert.Nil(t, err)
 		assert.Greater(t, 0.0001, math.Abs((2*x+float64(y%9))-math.Float64frombits(v)))
+	}
+}
+
+func TestMoreArgs(t *testing.T) {
+	expr := "(+ a b)"
+	values := map[string]uint64{
+		"a": math.Float64bits(1),
+		"b": math.Float64bits(2),
+	}
+	var_map := map[string]byte{
+		"a": grueljit.TypeFloat,
+		"b": grueljit.TypeFloat,
+	}
+	for i := 0; i < 32; i++ {
+		f, err := grueljit.Compile(expr, var_map)
+		assert.Nil(t, err)
+		sum, err := f.Call(values)
+		assert.Nil(t, err)
+		assert.Equal(t, float64((i+2)*(i+3)/2), math.Float64frombits(sum))
+
+		v := fmt.Sprintf("%c", rune('c'+i))
+		expr = fmt.Sprintf("(+ %s %s)", v, expr)
+		values[v] = math.Float64bits(float64(i + 3))
+		var_map[v] = grueljit.TypeFloat
+	}
+}
+
+func TestOps(t *testing.T) {
+	for name, ops := range ir.Operators {
+		for _, op := range ops {
+			expr := "(" + name + " x y x y)"
+			if op.Argc == 1 {
+				expr = "(" + name + " x)"
+			}
+			f, err := grueljit.Compile(expr, map[string]byte{"x": grueljit.TypeFloat, "y": grueljit.TypeInt})
+			assert.Nil(t, err)
+			_, err = f.Call(map[string]uint64{"x": math.Float64bits(1.), "y": 1})
+			assert.Nil(t, err)
+			f.Free()
+
+			f, err = grueljit.Compile(expr, map[string]byte{"y": grueljit.TypeFloat, "x": grueljit.TypeInt})
+			assert.Nil(t, err)
+			_, err = f.Call(map[string]uint64{"y": math.Float64bits(1.), "x": 1})
+			assert.Nil(t, err)
+			f.Free()
+		}
 	}
 }
 

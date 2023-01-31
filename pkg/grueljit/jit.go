@@ -18,6 +18,8 @@ import (
 	"github.com/yesh0/gruel/internal/ir"
 )
 
+//go:generate go run ../../build/ir/operators.go gruel_jit.c
+
 const (
 	TypeBool  byte = byte(gruelparser.TypeBool)
 	TypeInt   byte = byte(gruelparser.TypeInt)
@@ -39,7 +41,15 @@ func Compile(code string, symbols map[string]byte) (*Function, error) {
 	if err != nil {
 		return nil, err
 	}
-	return compileOpcodes(builder)
+	f, err := compileOpcodes(builder)
+	if f != nil {
+		runtime.SetFinalizer(f, free)
+	}
+	return f, err
+}
+
+func free(f *Function) {
+	f.Free()
 }
 
 // Compiles the byte code and returns a function handle.

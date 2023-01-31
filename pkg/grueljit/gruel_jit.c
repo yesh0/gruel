@@ -22,8 +22,17 @@ jit_long call_jit_function(jit_long function, jit_long args, jit_long len) {
       return 0;                                                                \
     }                                                                          \
     sp--;                                                                      \
-    code[sp - 1] = (jit_long)func(function, (jit_value_t)code[sp - 1],         \
-                                  (jit_value_t)code[sp]);                      \
+    code[sp - 1] = (jit_long)func(function, (jit_value_t)code[sp],             \
+                                  (jit_value_t)code[sp - 1]);                  \
+    break
+
+#define UNARY_OP(opcode, func)                                                 \
+  case (opcode):                                                               \
+    if (sp < 1) {                                                              \
+      jit_context_destroy(context);                                            \
+      return 0;                                                                \
+    }                                                                          \
+    code[sp - 1] = (jit_long)func(function, (jit_value_t)code[sp - 1]);        \
     break
 
 jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
@@ -52,11 +61,69 @@ jit_long compile_opcodes(jit_long length, jit_long *code, jit_long argc,
     jit_long value = code[pc + 1];
     if (type == GTYPE_PARENTHESIS) {
       switch (value) {
-        BINARY_OP(1, jit_insn_add);
-        BINARY_OP(2, jit_insn_sub);
-        BINARY_OP(3, jit_insn_mul);
-        BINARY_OP(4, jit_insn_div);
-        BINARY_OP(5, jit_insn_rem);
+        //@start maintained by operators.go
+        // `+`(2)
+        BINARY_OP(0x01, jit_insn_add);
+        // `-`(2)
+        BINARY_OP(0x02, jit_insn_sub);
+        // `-`(1)
+        UNARY_OP (0x03, jit_insn_neg);
+        // `*`(2)
+        BINARY_OP(0x04, jit_insn_mul);
+        // `/`(2)
+        BINARY_OP(0x05, jit_insn_div);
+        // `%`(2)
+        BINARY_OP(0x06, jit_insn_rem);
+        // `&`(2)
+        BINARY_OP(0x07, jit_insn_and);
+        // `|`(2)
+        BINARY_OP(0x08, jit_insn_or);
+        // `^`(2)
+        BINARY_OP(0x09, jit_insn_xor);
+        // `^`(1)
+        UNARY_OP (0x0a, jit_insn_not);
+        // `<<`(2)
+        BINARY_OP(0x0b, jit_insn_shl);
+        // `>>`(2)
+        BINARY_OP(0x0c, jit_insn_shr);
+        // `>>>`(2)
+        BINARY_OP(0x0d, jit_insn_ushr);
+        // `**`(2)
+        BINARY_OP(0x10, jit_insn_pow);
+        // `acos`(1)
+        UNARY_OP (0x11, jit_insn_acos);
+        // `asin`(1)
+        UNARY_OP (0x12, jit_insn_asin);
+        // `atan`(1)
+        UNARY_OP (0x13, jit_insn_atan);
+        // `atan2`(2)
+        BINARY_OP(0x14, jit_insn_atan2);
+        // `cos`(1)
+        UNARY_OP (0x15, jit_insn_cos);
+        // `cosh`(1)
+        UNARY_OP (0x16, jit_insn_cosh);
+        // `exp`(1)
+        UNARY_OP (0x17, jit_insn_exp);
+        // `log`(1)
+        UNARY_OP (0x18, jit_insn_log);
+        // `log10`(1)
+        UNARY_OP (0x19, jit_insn_log10);
+        // `pow`(2)
+        BINARY_OP(0x1a, jit_insn_pow);
+        // `sin`(1)
+        UNARY_OP (0x1b, jit_insn_sin);
+        // `sinh`(1)
+        UNARY_OP (0x1c, jit_insn_sinh);
+        // `sqrt`(1)
+        UNARY_OP (0x1d, jit_insn_sqrt);
+        // `tan`(1)
+        UNARY_OP (0x1e, jit_insn_tan);
+        // `tanh`(1)
+        UNARY_OP (0x1f, jit_insn_tanh);
+        //@end maintained by operators.go
+      default:
+        jit_context_destroy(context);
+        return 0;
       }
     } else if (type == GTYPE_SYMBOL) {
       if (argv[value] == GTYPE_FLOAT) {
