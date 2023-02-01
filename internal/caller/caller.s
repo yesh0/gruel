@@ -3,17 +3,39 @@
 #include "textflag.h"
 #include "funcdata.h"
 
-// func CallJit(f uint64, args uint64, l uint64) uint64
-TEXT ·CallJit(SB), NOSPLIT|NOFRAME, $512-32
-  NO_LOCAL_POINTERS
+// func CallJit(f uint64, args []uint64, stack uint64) uint64
+TEXT ·CallJit(SB), NOSPLIT|NOFRAME, $16-48
+	NO_LOCAL_POINTERS
+jit_entry:
+	// top(SI) = SP - max_stack_size
+	MOVQ SP, SI
+	MOVQ stack+32(FP), DI
+	SUBQ DI, SI
+
+	// if top <= g(DI).stackguard1 { goto stack_grow }
+	MOVQ (TLS), DI
+	CMPQ SI, 16(DI)
+	JBE  jit_stack_grow
+
+	// System V calling conventions
 	MOVQ f+0(FP), DI
-	MOVQ args+8(FP), SI
-	MOVQ l+16(FP), DX
+	MOVQ args_base+8(FP), SI
+
+	// Align the stack
 	MOVQ SP, BX
-	ADDQ $+512, SP
-	MOVQ $-16, AX
-	ANDQ AX, SP
+	ORQ  $+15, SP
+	INCQ SP
+
+	// Call relative
 	CALL call_jit_function+0x00(SB)
+
+	// Restore stack
 	MOVQ BX, SP
-	MOVQ AX, ret+24(FP)
+
+	// System V: Return value
+	MOVQ AX, ret+40(FP)
 	RET
+
+jit_stack_grow:
+	CALL runtime·morestack_noctxt<>+0x00(SB)
+	JMP  jit_entry

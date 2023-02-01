@@ -70,8 +70,8 @@ jit_value_t gruel_insn_ne(jit_function_t func, jit_value_t lhs,
   return jit_insn_to_not_bool(func, eq);
 }
 
-jit_long call_jit_function(jit_long function, jit_long args, jit_long len) {
-  if (function == 0 || (args == 0 && len != 0)) {
+jit_long call_jit_function(jit_long function, jit_long args) {
+  if (function == 0) {
     return 0;
   }
   jit_function_t f = (jit_function_t)function;

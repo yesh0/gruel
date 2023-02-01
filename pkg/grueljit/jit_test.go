@@ -14,7 +14,7 @@ import (
 )
 
 func TestCaller(t *testing.T) {
-	assert.Equal(t, uint64(0), caller.CallJit(0, 0, 0))
+	assert.Equal(t, uint64(0), caller.CallJit(0, nil, 0))
 }
 
 func assertResult(t *testing.T, expr string, result any) {
@@ -75,7 +75,7 @@ func TestArgs(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Greater(t, 0.00001, math.Abs(22-v.(float64)))
 
-	for i := 0; i < 0; i++ {
+	for i := 0; i < 300; i++ {
 		x := math.Remainder(rand.Float64(), 10)
 		y := int64(rand.Uint64())
 		v, err := f.Call(map[string]any{"x": x, "y": uint64(y)})

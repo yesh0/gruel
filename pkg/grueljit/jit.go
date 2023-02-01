@@ -33,6 +33,7 @@ type Function struct {
 	function   uint64
 	arg_types  []byte
 	arg_map    map[string]int
+	max_stack  int
 	stringc    int
 	float      bool
 	references any
@@ -90,6 +91,7 @@ func compileOpcodes(ir *ir.IrBuilder) (*Function, error) {
 		float: float, references: ir.References(),
 		arg_types: ir.Args(),
 		stringc:   ir.StringArgc(),
+		max_stack: ir.MaxStack() + 256,
 	}, nil
 }
 
@@ -208,20 +210,18 @@ func convertType(param any, target byte) (uint64, error) {
 // Calls the function
 func (f *Function) CallRaw(params []uint64) (uint64, error) {
 	argc := len(f.arg_map)
-	var address uint64
 	if params != nil {
 		if len(params) < argc {
 			return 0, fmt.Errorf("arguments not enough")
 		}
-		address = uint64(uintptr(unsafe.Pointer(&params[0])))
 	} else if argc != 0 {
 		return 0, fmt.Errorf("no arguments provided")
 	}
 
 	ret := caller.CallJit(
 		f.function,
-		address,
-		uint64(argc),
+		params,
+		uint64(f.max_stack),
 	)
 	runtime.KeepAlive(params)
 	return ret, nil

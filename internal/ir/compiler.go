@@ -30,12 +30,21 @@ type IrBuilder struct {
 	// Keep those objects alive
 	objects []string
 	strings list.List
+	// Stack space needed, in bytes
+	maxStack     int
+	currentStack int
 }
 
 func (b *IrBuilder) Push(value string, t gruelparser.TokenType, argc int) error {
 	if b.final {
 		return fmt.Errorf("code already finalized")
 	}
+
+	b.currentStack += 8
+	if b.maxStack < b.currentStack {
+		b.maxStack = b.currentStack
+	}
+
 	var output uint64
 	tType := uint64(t)
 	switch t {
@@ -95,8 +104,10 @@ func (b *IrBuilder) Push(value string, t gruelparser.TokenType, argc int) error 
 			for argc > op.Argc {
 				binary.Write(&b.b, binary.LittleEndian, &tType)
 				binary.Write(&b.b, binary.LittleEndian, &output)
+				b.currentStack -= 8
 				argc--
 			}
+			b.currentStack -= 16
 		}
 	}
 	binary.Write(&b.b, binary.LittleEndian, &tType)
@@ -161,6 +172,12 @@ func (b *IrBuilder) References() any {
 		return nil
 	}
 	return []any{b.objects, b.strings}
+}
+
+// Needed stack space, in bytes
+func (b *IrBuilder) MaxStack() int {
+	b.Finalize()
+	return b.maxStack
 }
 
 func (b *IrBuilder) StringArgc() int {

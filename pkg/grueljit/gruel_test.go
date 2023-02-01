@@ -135,7 +135,7 @@ func benchmarkGovaluateLengthier(b *testing.B, n int) {
 	sb := strings.Builder{}
 	sb.WriteString("x")
 	for i := 0; i < n-1; i++ {
-		sb.WriteString(" + x")
+		sb.WriteString(" * x")
 	}
 	f, _ := govaluate.NewEvaluableExpression(sb.String())
 	args := map[string]any{
